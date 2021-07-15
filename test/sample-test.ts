@@ -1,32 +1,13 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Signer } from "ethers";
-
-describe("Token", function () {
-  let accounts: Signer[];
-
-  beforeEach(async function () {
-    accounts = await ethers.getSigners();
-  });
-
-  it("should do something right", async function () {
-    // Do something with the accounts
-  });
-});
 
 describe("Greeter", function () {
-  it("Should return the new greeting once it's changed", async function () {
-    const Greeter = await ethers.getContractFactory("Greeter");
-    const greeter = await Greeter.deploy("Hello, world!");
+  it("Should always return true", async function () {
+    const Greeter = await ethers.getContractFactory("MyWord");
+    const greeter = await Greeter.deploy();
     await greeter.deployed();
 
-    expect(await greeter.greet()).to.equal("Hello, world!");
-
-    const setGreetingTx = await greeter.setGreeting("Hola, mundo!");
-
-    // wait until the transaction is mined
-    await setGreetingTx.wait();
-
-    expect(await greeter.greet()).to.equal("Hola, mundo!");
+    // expect(await greeter.validTransition("adsf", ";llkhjj", 0, 2)).to.equal(true)
+    expect(await greeter.say("bitch")).to.equal("you are a bitch");
   });
 });
