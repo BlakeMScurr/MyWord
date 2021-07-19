@@ -16,7 +16,7 @@ describe("MyWord", function () {
     let hash = ethers.utils.keccak256(byteArg)
     let from: VariablePart = {
       outcome: hEthers.constants.HashZero,
-      appData: ethers.utils.defaultAbiCoder.encode(['bytes32'], [hash]),
+      appData: ethers.utils.defaultAbiCoder.encode(['bytes32', 'tuple(uint8, uint8, uint8)'], [hash, [3,4,5]]),
     }
 
     let to: VariablePart = {

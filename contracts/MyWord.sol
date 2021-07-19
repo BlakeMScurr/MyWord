@@ -32,7 +32,6 @@ contract MyWord is IForceMoveApp, Util {
         uint256 // nParticipants
     ) public view returns (bool) {
         Draw memory draw = appData(from.appData);
-        console.log(bytes32ToString(draw.drawCommitment));
         return true;
     }
 
@@ -66,7 +65,7 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Draw {
         bytes32 drawCommitment;
-        // Treasury treasury;
+        Treasury treasury;
     }
 
     /** 
