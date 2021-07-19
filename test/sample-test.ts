@@ -12,8 +12,8 @@ describe("MyWord", function () {
   })
 
   it("Should handle draw -> shuffle transition", async () => {
-    let byteArg = ethers.utils.formatBytes32String("test")
-    let hash = ethers.utils.keccak256(byteArg)
+    // TODO: hash an actual draw commitment
+    let hash = ethers.utils.keccak256(ethers.utils.formatBytes32String("test"))
     let from: VariablePart = {
       outcome: hEthers.constants.HashZero,
       appData: ethers.utils.defaultAbiCoder.encode(['bytes32', 'tuple(uint8, uint8, uint8)'], [hash, [3,4,5]]),
@@ -21,7 +21,7 @@ describe("MyWord", function () {
 
     let to: VariablePart = {
       outcome: hEthers.constants.HashZero,
-      appData: hEthers.constants.HashZero,
+      appData: ethers.utils.defaultAbiCoder.encode(['bytes32', 'tuple(uint8, uint8, uint8)', ''], [hash, [3,4,5]]),
     }
 
     expect(await myWord.validTransitionTestable(from, to, 0, 2)).to.equal(true)
