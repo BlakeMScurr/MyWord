@@ -32,7 +32,8 @@ contract MyWord is IForceMoveApp, Util {
         uint256 // nParticipants
     ) public view returns (bool) {
         Draw memory draw = decodeDraw(from.appData);
-        // Shuffle memory shuffle = shuffleData(from.appData);
+        Shuffle memory shuffle = decodeShuffle(to.appData);
+        requireEqualTreasuries(draw.treasury, shuffle.treasury);
         return true;
     }
 
@@ -112,12 +113,23 @@ contract MyWord is IForceMoveApp, Util {
         uint8 pot;
     }
 
-// -------------------------------------------------- Decoders --------------------------------------------------
+    // ------------------------------------------------- Requirements -------------------------------------------------
+
+    function requireEqualTreasuries(Treasury memory t1, Treasury memory t2) internal pure {
+        require(
+            t1.a == t2.a &&
+            t1.b == t2.b &&
+            t1.pot == t2.pot,
+        'Treasuries not equal');
+    }
+
+    // --------------------------------------------------- Decoders ---------------------------------------------------
 
      /**
      * The DecodeX functions decode structs on chain
      * The XStruct functions expose structs in the ABI
      * TODO: generate precompile
+     * TODO: move to another file
      */
     function decodeDraw(bytes memory appDataBytes) internal pure returns (Draw memory) {return abi.decode(appDataBytes, (Draw));}
     function DrawStruct(Draw memory) public pure {}
