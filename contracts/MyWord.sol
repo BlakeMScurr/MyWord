@@ -31,22 +31,10 @@ contract MyWord is IForceMoveApp, Util {
         uint48, // turnNumB
         uint256 // nParticipants
     ) public view returns (bool) {
-        Draw memory draw = appData(from.appData);
+        Draw memory draw = decodeDraw(from.appData);
+        // Shuffle memory shuffle = shuffleData(from.appData);
         return true;
     }
-
-    // -------------------------------------------------- Decoders --------------------------------------------------
-
-    /**
-     * @notice Decodes the appData.
-     * @dev Decodes the appData.
-     * @param appDataBytes The abi.encode of a CountingAppData struct describing the application-specific data.
-     * @return A CountingAppDatat struct containing the application-specific data.
-     */
-    function appData(bytes memory appDataBytes) internal pure returns (Draw memory) {
-        return abi.decode(appDataBytes, (Draw));
-    }
-
 
     // ------------------------------------------------- Game States -------------------------------------------------
     //
@@ -123,4 +111,27 @@ contract MyWord is IForceMoveApp, Util {
         uint8 b;
         uint8 pot;
     }
+
+// -------------------------------------------------- Decoders --------------------------------------------------
+
+     /**
+     * The DecodeX functions decode structs on chain
+     * The XStruct functions expose structs in the ABI
+     * TODO: generate precompile
+     */
+    function decodeDraw(bytes memory appDataBytes) internal pure returns (Draw memory) {return abi.decode(appDataBytes, (Draw));}
+    function DrawStruct(Draw memory) public pure {}
+    
+    function decodeShuffle(bytes memory appDataBytes) internal pure returns (Shuffle memory) { return abi.decode(appDataBytes, (Shuffle));}
+    function ShuffleStruct(Shuffle memory) public pure {}
+
+    function decodePair(bytes memory appDataBytes) internal pure returns (Pair memory) { return abi.decode(appDataBytes, (Pair));}
+    function PairStruct(Pair memory) public pure {}
+
+    function decodeGuess(bytes memory appDataBytes) internal pure returns (Guess memory) { return abi.decode(appDataBytes, (Guess));}
+    function GuessStruct(Guess memory) public pure {}
+
+    function decodeReveal(bytes memory appDataBytes) internal pure returns (Reveal memory) { return abi.decode(appDataBytes, (Reveal));}
+    function RevealStruct(Reveal memory) public pure {}
+
 }
