@@ -56,7 +56,7 @@ task("compile:solidity:log:compilation-result").setAction(async (taskArgs, hre, 
           }
       })
       let methodID = <Identifier>method.key
-      constructorBodyLines.push(`this.kind = "${methodID.name}"`)
+      constructorBodyLines.push(`this.kind = "${methodID.name.replace("Struct", "")}"`)
 
       // Add constructor
       // TODO: make this a whole lot more elegant - surely I can use prettier or something like that

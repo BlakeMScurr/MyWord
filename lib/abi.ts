@@ -14,6 +14,10 @@ export class ABI {
     // encodeStruct assumes that there is a trivial public function called struct.kind
     // TODO: that function should be auto generated
     encodeStruct(struct: state) {
-        return this.abiInterface._encodeParams(this.abiInterface.getFunction(struct.kind).inputs, [struct])
+        return this.abiInterface._encodeParams(this.abiInterface.getFunction(struct.kind + "Struct").inputs, [struct])
+    }
+
+    encodeGenericStruct(kind: string) {
+        return this.abiInterface._encodeParams(this.abiInterface.getFunction("GenericStateInterface").inputs, [{kind: kind}])
     }
 }

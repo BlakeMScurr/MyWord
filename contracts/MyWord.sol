@@ -65,9 +65,9 @@ contract MyWord is IForceMoveApp, Util {
        list
      */
     struct Draw {
+        string kind;
         bytes32 drawCommitment;
         Treasury treasury;
-        string kind;
     }
 
     /** 
@@ -76,10 +76,10 @@ contract MyWord is IForceMoveApp, Util {
      * To find the new card we add A's selection to B's shuffle mod the word list length.
      */
     struct Shuffle {
+        string kind;
         uint32[5] shuffles;
         bytes32 drawCommitment;
         Treasury treasury;
-        string kind;
     }
 
     /** 
@@ -89,10 +89,10 @@ contract MyWord is IForceMoveApp, Util {
      * The commitment is a salted hash of those pairings.
      */
     struct Pair {
+        string kind;
         bytes32 selectionCommitment;
         uint32[5] cards;
         Treasury treasury;
-        string kind;
     }
 
     /** 
@@ -101,22 +101,24 @@ contract MyWord is IForceMoveApp, Util {
      * 2.
      */
     struct Guess {
+        string kind;
         uint8[2] guess;
         bytes32 selectionCommitment;
         uint32[5] cards;
         Treasury treasury;
-        string kind;
     }
 
     /** 
      * @title Player A reveals their card pairs and updates the treausury
      */
     struct Reveal {
+        string kind;
         uint256 salt;
         uint8[2] selection;
         Treasury treasury;
-        string kind;
     }
+
+
 
     /**
      * @title The treasury showing how much is owed to each player
@@ -140,15 +142,24 @@ contract MyWord is IForceMoveApp, Util {
         'Treasuries not equal');
     }
 
-    // --------------------------------------------------- Decoders ---------------------------------------------------
 
-    struct state {
+    // --------------------------------------------------- Interface ---------------------------------------------------
+
+
+    /**
+     * GenericState allows us distinguish between any state kind, so long as `kind` is the first parameter defined in any struct definition
+     */
+    struct GenericState {
         string kind;
     }
 
     function kind(bytes memory appDataBytes) internal pure returns (string memory) {
-        return abi.decode(appDataBytes, (state)).kind;
+        return abi.decode(appDataBytes, (GenericState)).kind;
     }
+    function GenericStateInterface(GenericState memory) public pure {}
+
+    // --------------------------------------------------- Decoders ---------------------------------------------------
+
 
      /**
      * The DecodeX functions decode structs on chain

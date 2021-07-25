@@ -25,11 +25,18 @@ describe("MyWord", function () {
       appData: abi.encodeStruct(state),
     }
   }
+  let encodeGenericStruct = (kind):VariablePart => {
+    return {
+      outcome: hEthers.constants.HashZero,
+      appData: abi.encodeGenericStruct(kind),
+    }
+  }
+
 
   it("Should not allow invalid state kinds/pairings", async () => {
-    await expect(deployedContract.validTransitionTestable(encode({kind: "Draw"}), encode({ kind: "Pair" }), 0, 2)).to.be.revertedWith("Invalid state kinds") // jump
-    await expect(deployedContract.validTransitionTestable(encode({kind: "Shuffle"}), encode({ kind: "Draw" }), 0, 2)).to.be.revertedWith("Invalid state kinds") // reversed
-    await expect(deployedContract.validTransitionTestable(encode({kind: "Jazz"}), encode({ kind: "AppleTrane" }), 0, 2)).to.be.revertedWith("Invalid state kinds") // garbace
+    await expect(deployedContract.validTransitionTestable(encodeGenericStruct("Draw"), encodeGenericStruct("Pair"), 0, 2)).to.be.revertedWith("Invalid state kinds") // jump
+    await expect(deployedContract.validTransitionTestable(encodeGenericStruct("Shuffle"), encodeGenericStruct("Draw"), 0, 2)).to.be.revertedWith("Invalid state kinds") // reversed
+    await expect(deployedContract.validTransitionTestable(encodeGenericStruct("Jazz"), encodeGenericStruct("AppleTrane"), 0, 2)).to.be.revertedWith("Invalid state kinds") // garbace
   })
 
   it("Should transition from Draw to Shuffle", async () => {
