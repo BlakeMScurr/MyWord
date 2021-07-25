@@ -50,9 +50,13 @@ task("compile:solidity:log:compilation-result").setAction(async (taskArgs, hre, 
           let propSig = <TSPropertySignature>member
           let psid = <Identifier>propSig.key
           let typeBody =  myWordFile.substring(propSig.typeAnnotation.range[0], propSig.typeAnnotation.range[1]).replace(/[(  )\n\t]/g,'').substring(1)
-          typeSigs.push(`${psid.name}: ${typeBody}`)
-          constructorBodyLines.push(`this.${psid.name} = ${psid.name}`)
+          if (psid.name !== "kind") {
+            typeSigs.push(`${psid.name}: ${typeBody}`)
+            constructorBodyLines.push(`this.${psid.name} = ${psid.name}`)
+          }
       })
+      let methodID = <Identifier>method.key
+      constructorBodyLines.push(`this.kind = "${methodID.name}"`)
 
       // Add constructor
       // TODO: make this a whole lot more elegant - surely I can use prettier or something like that

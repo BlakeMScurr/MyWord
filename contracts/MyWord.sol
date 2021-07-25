@@ -31,9 +31,21 @@ contract MyWord is IForceMoveApp, Util {
         uint48, // turnNumB
         uint256 // nParticipants
     ) public view returns (bool) {
-        Draw memory draw = decodeDraw(from.appData);
-        Shuffle memory shuffle = decodeShuffle(to.appData);
-        requireEqualTreasuries(draw.treasury, shuffle.treasury);
+        string memory fromKind = kind(from.appData);
+        string memory toKind = kind(to.appData);
+
+        if (keccak256(bytes(fromKind)) == keccak256(bytes("Draw")) && keccak256(bytes(toKind)) == keccak256(bytes("Shuffle"))) {
+            Draw memory draw = decodeDraw(from.appData);
+            Shuffle memory shuffle = decodeShuffle(to.appData);
+            requireEqualTreasuries(draw.treasury, shuffle.treasury);
+            require(draw.drawCommitment == shuffle.drawCommitment, "Draw commitment tampered with");
+        } else if (keccak256(bytes(fromKind)) == keccak256(bytes("Shuffle")) && keccak256(bytes(toKind)) == keccak256(bytes("Pair"))) {
+        } else if (keccak256(bytes(fromKind)) == keccak256(bytes("Pair")) && keccak256(bytes(toKind)) == keccak256(bytes("Guess"))) {
+        } else if (keccak256(bytes(fromKind)) == keccak256(bytes("Guess")) && keccak256(bytes(toKind)) == keccak256(bytes("Reveal"))) {
+        } else if (keccak256(bytes(fromKind)) == keccak256(bytes("Reveal")) && keccak256(bytes(toKind)) == keccak256(bytes("Draw"))) {
+        } else {
+            revert("Invalid state kinds");
+        }
         return true;
     }
 
@@ -55,6 +67,7 @@ contract MyWord is IForceMoveApp, Util {
     struct Draw {
         bytes32 drawCommitment;
         Treasury treasury;
+        string kind;
     }
 
     /** 
@@ -66,6 +79,7 @@ contract MyWord is IForceMoveApp, Util {
         uint32[5] shuffles;
         bytes32 drawCommitment;
         Treasury treasury;
+        string kind;
     }
 
     /** 
@@ -78,6 +92,7 @@ contract MyWord is IForceMoveApp, Util {
         bytes32 selectionCommitment;
         uint32[5] cards;
         Treasury treasury;
+        string kind;
     }
 
     /** 
@@ -90,6 +105,7 @@ contract MyWord is IForceMoveApp, Util {
         bytes32 selectionCommitment;
         uint32[5] cards;
         Treasury treasury;
+        string kind;
     }
 
     /** 
@@ -99,6 +115,7 @@ contract MyWord is IForceMoveApp, Util {
         uint256 salt;
         uint8[2] selection;
         Treasury treasury;
+        string kind;
     }
 
     /**
@@ -124,6 +141,14 @@ contract MyWord is IForceMoveApp, Util {
     }
 
     // --------------------------------------------------- Decoders ---------------------------------------------------
+
+    struct state {
+        string kind;
+    }
+
+    function kind(bytes memory appDataBytes) internal pure returns (string memory) {
+        return abi.decode(appDataBytes, (state)).kind;
+    }
 
      /**
      * The DecodeX functions decode structs on chain
