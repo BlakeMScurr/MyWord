@@ -25,8 +25,6 @@ contract MyWord is IForceMoveApp, Util {
         return true;
     }
 
-    function flaggyb() public{}
-
     function validTransitionTestable(
         VariablePart memory from,
         VariablePart memory to,
