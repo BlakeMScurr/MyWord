@@ -34,7 +34,6 @@ async function main () {
     }).map(method => {
         return <MethodDefinition>method
     });
-    
     methods.forEach(method => {
         let arg0 = method.value.params[0] // arg0 contains the struct we want to convert
         let typeDef = myWordFile.substring(arg0.range[0], arg0.range[1])
@@ -57,11 +56,12 @@ async function main () {
             constructorBodyLines.push(`this.${psid.name} = ${psid.name}`)
         })
 
-        let constructor = `constructor(${typeSigs.join(', ')}) {` + constructorBodyLines.join('\n') + '}'
-        newClass = newClass.split('\n').splice(1, 0, constructor).join('\n')
-
-        // Add the new class to the file and separate the classes
-        file += `\n\n` + newClass
+        // Add constructor
+        // TODO: make this a whole lot more elegant - surely I can use prettier or something like that
+        let constructor = `\n\tconstructor(${typeSigs.join(', ')}) {\n\t\t` + constructorBodyLines.join('\n\t\t') + '\n\t}'
+        let lines = newClass.split('\n')
+        lines.splice(lines.length-1, 0, constructor)
+        file += `\n\n` + lines.join('\n')
     })
     
 
