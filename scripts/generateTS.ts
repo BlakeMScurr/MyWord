@@ -1,8 +1,10 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
-import * as tsp from "typescript-parser"
-import { ClassDeclaration } from 'typescript-parser';
+// import * as tsp from "typescript-parser-deluxe"
+// import { ClassDeclaration } from 'typescript-parser-deluxe';
+import * as tsp from "@typescript-eslint/typescript-estree"
+import { ExportNamedDeclaration, ClassDeclaration, MethodDefinition, Identifier, TSTypeAnnotation, TSTypeLiteral, TSPropertySignature } from "@typescript-eslint/types/dist/ast-spec"
 
 // Generates typescript classes representing the solidity structs that are used in the ForceMove game
 // Typechain was not enough because the actual type of AppData as an argument to ValidTransition is bytes
@@ -14,17 +16,54 @@ async function main () {
     let myWordFilePath = path.join(path.resolve(__dirname, ".."), "typechain","MyWord.d.ts")
     let myWordFile = fs.readFileSync(myWordFilePath, "utf8")
 
-    const parser = new tsp.TypescriptParser();
-    const parsed = await parser.parseSource(myWordFile);
     
     let file = template;
-    let c = <ClassDeclaration>parsed.declarations[1]
-    c.methods.forEach((m) => {
-        if (m.name.endsWith("Struct")) {
-            // Build and prettify the struct from the type of the method's parameter
-            file += `\n\nexport class ${m.name.replace("Struct", "")} ${m.parameters[0].type}`.replace(new RegExp(`^\\    `, 'gm'), '')
+    
+    let parsed = tsp.parse(myWordFile, { range: true });
+    let end = <ExportNamedDeclaration>parsed.body.filter((decl) => { return decl.type === "ExportNamedDeclaration" })[0]
+    let cd = <ClassDeclaration>end.declaration
+    let methods: Array<MethodDefinition> = cd.body.body.filter(classChild => {
+        if (classChild.type === "MethodDefinition") {
+            let method = <MethodDefinition>classChild;
+            let key = <Identifier>method.key
+            if (key.name.endsWith("Struct")) {
+                return true
+            }
         }
+        return false
+    }).map(method => {
+        return <MethodDefinition>method
+    });
+    
+    methods.forEach(method => {
+        let arg0 = method.value.params[0] // arg0 contains the struct we want to convert
+        let typeDef = myWordFile.substring(arg0.range[0], arg0.range[1])
+        let key = <Identifier>method.key
+
+        let newClass = `export class ${key.name.replace("Struct", "")} ${typeDef.replace("arg0: ", "")}`.replace(new RegExp(`^\\    `, 'gm'), '')
+
+        // add constructor
+        let id = <Identifier>arg0
+        let tya = <TSTypeAnnotation>id.typeAnnotation
+        let tyl = <TSTypeLiteral>tya.typeAnnotation
+
+        let typeSigs = []
+        let constructorBodyLines = []
+        tyl.members.forEach(member => {
+            let propSig = <TSPropertySignature>member
+            let psid = <Identifier>propSig.key
+            let typeBody =  myWordFile.substring(propSig.typeAnnotation.range[0], propSig.typeAnnotation.range[1]).replace(/[(  )\n\t]/g,'').substring(1)
+            typeSigs.push(`${psid.name}: ${typeBody}`)
+            constructorBodyLines.push(`this.${psid.name} = ${psid.name}`)
+        })
+
+        let constructor = `constructor(${typeSigs.join(', ')}) {` + constructorBodyLines.join('\n') + '}'
+        newClass = newClass.split('\n').splice(1, 0, constructor).join('\n')
+
+        // Add the new class to the file and separate the classes
+        file += `\n\n` + newClass
     })
+    
 
     fs.writeFileSync(path.join(path.resolve(__dirname, ".."), "generated", "MyWord.ts"), file)
 }

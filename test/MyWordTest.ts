@@ -6,6 +6,7 @@ import { ethers as hEthers} from "hardhat";
 import * as contract from "../artifacts/contracts/MyWord.sol/MyWord.json";
 import { MyWord__factory } from "../typechain"
 import type { MyWord } from "../typechain"
+import { Draw } from "../generated/MyWord";
 
 describe("MyWord", function () {
   let deployedContract: MyWord
