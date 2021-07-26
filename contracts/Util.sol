@@ -15,4 +15,7 @@ contract Util {
         return string(bytesArray);
     }
 
+    function strEq(string memory arg, string memory k) internal pure returns (bool){
+        return keccak256(bytes(arg)) == keccak256(bytes(k));
+    }
 }

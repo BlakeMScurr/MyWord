@@ -11,6 +11,13 @@ import { Util } from "./Util.sol";
  * data. Used for testing purposes.
  */
 contract MyWord is IForceMoveApp, Util {
+    uint32 nounListLength;
+    uint32 adjectiveListLength;
+    constructor() public {
+        nounListLength = 1000;
+        adjectiveListLength = 2000;
+    }
+
     /**
      * @notice Encodes trivial rules.
      * @dev Encodes trivial rules.
@@ -34,15 +41,32 @@ contract MyWord is IForceMoveApp, Util {
         string memory fromKind = kind(from.appData);
         string memory toKind = kind(to.appData);
 
-        if (keccak256(bytes(fromKind)) == keccak256(bytes("Draw")) && keccak256(bytes(toKind)) == keccak256(bytes("Shuffle"))) {
+        if (strEq(fromKind, "Draw") && strEq(toKind, "Shuffle")) {
             Draw memory draw = decodeDraw(from.appData);
             Shuffle memory shuffle = decodeShuffle(to.appData);
+
             requireEqualTreasuries(draw.treasury, shuffle.treasury);
             require(draw.drawCommitment == shuffle.drawCommitment, "Draw commitment tampered with");
-        } else if (keccak256(bytes(fromKind)) == keccak256(bytes("Shuffle")) && keccak256(bytes(toKind)) == keccak256(bytes("Pair"))) {
-        } else if (keccak256(bytes(fromKind)) == keccak256(bytes("Pair")) && keccak256(bytes(toKind)) == keccak256(bytes("Guess"))) {
-        } else if (keccak256(bytes(fromKind)) == keccak256(bytes("Guess")) && keccak256(bytes(toKind)) == keccak256(bytes("Reveal"))) {
-        } else if (keccak256(bytes(fromKind)) == keccak256(bytes("Reveal")) && keccak256(bytes(toKind)) == keccak256(bytes("Draw"))) {
+        } else if (strEq(fromKind, "Shuffle") && strEq(toKind, "Pair")) {
+            Shuffle memory shuffle = decodeShuffle(from.appData);
+            Pair memory pair = decodePair(to.appData);
+
+            requireEqualTreasuries(shuffle.treasury, pair.treasury);
+            uint8 i;
+            for (i = 0; i < 2; i++) {
+                require(shuffle.nounShuffles[i] < nounListLength, "Noun shuffle must be an integer less than the noun list length");
+                require(pair.nounDraw[i] < nounListLength, "Noun draw must be an integer less than the noun list length");
+                require((shuffle.nounShuffles[i] + pair.nounDraw[i]) % nounListLength == pair.nouns[i], "Selected card must be draw plus shuffle mod list length");
+            }
+            for (i = 0; i < 3; i++) {
+                require(shuffle.adjectiveShuffles[i] < adjectiveListLength, "Adjective shuffle must be an integer less than the adjective list length");
+                require(pair.adjectiveDraw[i] < adjectiveListLength, "Adjective draw must be an integer less than the adjective list length");
+                require((shuffle.adjectiveShuffles[i] + pair.adjectiveDraw[i]) % adjectiveListLength == pair.adjectives[i], "Selected card must be draw plus shuffle mod list length");
+            }
+            require(keccak256(abi.encodePacked(pair.nounDraw, pair.adjectiveDraw, pair.salt)) == shuffle.drawCommitment, "Draw reveal invalid");
+        } else if (strEq(fromKind, "Pair") && strEq(toKind, "Guess")) {
+        } else if (strEq(fromKind, "Guess") && strEq(toKind, "Reveal")) {
+        } else if (strEq(fromKind, "Reveal") && strEq(toKind, "Draw")) {
         } else {
             revert("Invalid state kinds");
         }
@@ -77,7 +101,8 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Shuffle {
         string kind;
-        uint32[5] shuffles;
+        uint32[2] nounShuffles;
+        uint32[3] adjectiveShuffles;
         bytes32 drawCommitment;
         Treasury treasury;
     }
@@ -91,7 +116,11 @@ contract MyWord is IForceMoveApp, Util {
     struct Pair {
         string kind;
         bytes32 selectionCommitment;
-        uint32[5] cards;
+        uint32[2] nounDraw;
+        uint32[3] adjectiveDraw;
+        uint256 salt;
+        uint32[2] nouns;
+        uint32[3] adjectives;
         Treasury treasury;
     }
 
@@ -117,8 +146,6 @@ contract MyWord is IForceMoveApp, Util {
         uint8[2] selection;
         Treasury treasury;
     }
-
-
 
     /**
      * @title The treasury showing how much is owed to each player
