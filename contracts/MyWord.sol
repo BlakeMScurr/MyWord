@@ -35,22 +35,22 @@ contract MyWord is IForceMoveApp, Util {
     function validTransitionTestable(
         VariablePart memory from,
         VariablePart memory to,
-        uint48, // turnNumB
+        uint48 turnNumB,
         uint256 // nParticipants
     ) public view returns (bool) {
         string memory fromKind = kind(from.appData);
         string memory toKind = kind(to.appData);
 
         if (strEq(fromKind, "Draw") && strEq(toKind, "Shuffle")) {
-            requireValidDrawToShuffle(abi.decode(from.appData, (Draw)), abi.decode(to.appData, (Shuffle)));
+            requireValidDrawToShuffle(abi.decode(from.appData, (Draw)), abi.decode(to.appData, (Shuffle)), turnNumB);
         } else if (strEq(fromKind, "Shuffle") && strEq(toKind, "Pair")) {
-            requireValidShuffleToPair(abi.decode(from.appData, (Shuffle)), abi.decode(to.appData, (Pair)));
+            requireValidShuffleToPair(abi.decode(from.appData, (Shuffle)), abi.decode(to.appData, (Pair)), turnNumB);
         } else if (strEq(fromKind, "Pair") && strEq(toKind, "Guess")) {
-            requireValidPairToGuess(abi.decode(from.appData, (Pair)), abi.decode(to.appData, (Guess)));
+            requireValidPairToGuess(abi.decode(from.appData, (Pair)), abi.decode(to.appData, (Guess)), turnNumB);
         } else if (strEq(fromKind, "Guess") && strEq(toKind, "Reveal")) {
-            requireValidGuessToReveal(abi.decode(from.appData, (Guess)), abi.decode(to.appData, (Reveal)));
+            requireValidGuessToReveal(abi.decode(from.appData, (Guess)), abi.decode(to.appData, (Reveal)), turnNumB);
         } else if (strEq(fromKind, "Reveal") && strEq(toKind, "Draw")) {
-            requireValidRevealToDraw(abi.decode(from.appData, (Reveal)), abi.decode(to.appData, (Draw)));
+            requireValidRevealToDraw(abi.decode(from.appData, (Reveal)), abi.decode(to.appData, (Draw)), turnNumB);
         } else {
             revert("Invalid state kinds");
         }
@@ -59,12 +59,12 @@ contract MyWord is IForceMoveApp, Util {
     
     // ------------------------------------------------- Transitions -------------------------------------------------
 
-    function requireValidDrawToShuffle(Draw memory draw, Shuffle memory shuffle) internal view {
+    function requireValidDrawToShuffle(Draw memory draw, Shuffle memory shuffle, uint48 turnNumB) internal view {
         requireEqualTreasuries(draw.treasury, shuffle.treasury);
         require(draw.drawCommitment == shuffle.drawCommitment, "Draw commitment tampered with");
     }
 
-    function requireValidShuffleToPair(Shuffle memory shuffle, Pair memory pair) internal view {
+    function requireValidShuffleToPair(Shuffle memory shuffle, Pair memory pair, uint48 turnNumB) internal view {
         requireEqualTreasuries(shuffle.treasury, pair.treasury);
         uint8 i;
         for (i = 0; i < 2; i++) {
@@ -80,7 +80,7 @@ contract MyWord is IForceMoveApp, Util {
         require(keccak256(abi.encodePacked(pair.nounDraw, pair.adjectiveDraw, pair.salt)) == shuffle.drawCommitment, "Draw reveal invalid");
     }
 
-    function requireValidPairToGuess(Pair memory pair, Guess memory guess) internal view {
+    function requireValidPairToGuess(Pair memory pair, Guess memory guess, uint48 turnNumB) internal view {
         requireEqualTreasuries(pair.treasury, guess.treasury);
         require(pair.selectionCommitment == guess.selectionCommitment, "Selection commitment tampered with");
         uint8 i;
@@ -93,9 +93,34 @@ contract MyWord is IForceMoveApp, Util {
         require(guess.guess[0] < 3 && guess.guess[1] < 3, "Guess out of range [0, 2]");
     }
 
-    function requireValidGuessToReveal(Guess memory guess, Reveal memory reveal) internal view {}
+    function requireValidGuessToReveal(Guess memory guess, Reveal memory reveal, uint48 turnNumB) internal view {
+        require(keccak256(abi.encodePacked(reveal.selection, reveal.salt)) == guess.selectionCommitment, "Selection reveal invalid");
 
-    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw) internal view {}
+        uint8 guesserDelta;
+        uint8 selectorDelta;
+
+        bool p0 = guess.guess[0] == reveal.selection[0];
+        bool p1 = guess.guess[1] == reveal.selection[1];
+        if (p0 && p1) {
+            guesserDelta++;
+            selectorDelta++;
+        } else if ((p0 && !p1) || (!p0 && p1)) {
+            selectorDelta+= 2;
+        }
+        guess.treasury.pot -= 2;
+
+        // If turn numb is even then the drawer/selector/revealer must be player A, otherwise it's player B
+        if (turnNumB % 2 == 0) {
+            guess.treasury.a += selectorDelta;
+            guess.treasury.b += guesserDelta;
+        } else {
+            guess.treasury.a += guesserDelta;
+            guess.treasury.b += selectorDelta;
+        }
+        requireEqualTreasuries(guess.treasury, reveal.treasury);
+    }
+
+    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw, uint48 turnNumB) internal view {}
 
     // ------------------------------------------------- Game States -------------------------------------------------
     //

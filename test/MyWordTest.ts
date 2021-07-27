@@ -6,7 +6,7 @@ import { ethers as hEthers} from "hardhat";
 import * as contract from "../artifacts/contracts/MyWord.sol/MyWord.json";
 import { MyWord__factory } from "../typechain"
 import type { MyWord } from "../typechain"
-import { Draw, Guess, Pair, Shuffle } from "../generated/MyWord";
+import { Draw, Guess, Pair, Reveal, Shuffle } from "../generated/MyWord";
 
 describe("MyWord", function () {
   let deployedContract: MyWord
@@ -144,6 +144,93 @@ describe("MyWord", function () {
       guess.guess = [0, 255]
       await expect(deployedContract.validTransitionTestable(encode(pair), encode(guess), 0, 2)).to.be.revertedWith("Guess out of range [0, 2]")
     })
+  })
+
+  describe("Guess -> Reveal", () => {
+    let guess: Guess
+    let reveal: Reveal
+    let salt = 123456789
+    let pairingOptions: Array<[number, number]> = [[0,1], [0,2], [1,1], [1,2], [2,1], [2,2]]
+    let commit = (selection) => {
+      return ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "tuple(uint8, uint8)", "uint256" ], [selection, salt]))
+    }
+
+    beforeEach(() => {
+      let nouns: [number, number] = [0,1]
+      let adjectives: [number, number, number] = [0,1, 2]
+      guess = new Guess([0,1], commit([0,1]), nouns, adjectives, {a: 3, b: 4, pot: 5})
+      reveal = new Reveal([0,1], { a: 4, b: 5, pot: 3 }, salt)
+    })
+
+    it("Should not allow incorrect treasuries", async () => {
+      guess.treasury.a = 7
+      await expect(deployedContract.validTransitionTestable(encode(guess), encode(reveal), 0, 2)).to.be.revertedWith("Treasuries not equal")
+    })
+
+    it("Should require the selection to match the commitment", async () => {
+      // suppose the salt is corrupted
+      reveal.salt = 69420
+      await expect(deployedContract.validTransitionTestable(encode(guess), encode(reveal), 0, 2)).to.be.revertedWith("Selection reveal invalid")
+      
+      // suppose the selector attempts to change their selection
+      reveal.salt = salt
+      reveal.selection = [1, 0]
+      await expect(deployedContract.validTransitionTestable(encode(guess), encode(reveal), 0, 2)).to.be.revertedWith("Selection reveal invalid")
+    })
+
+    it("Should recognise agreements", async () => {
+      expect(await deployedContract.validTransitionTestable(encode(guess), encode(reveal), 0, 2)).to.equal(true)
+
+      for (let i = 0; i < pairingOptions.length; i++) {
+        const option = pairingOptions[i]
+        guess.guess = option
+        guess.selectionCommitment = commit(option)
+        reveal.selection = option
+        expect(await deployedContract.validTransitionTestable(encode(guess), encode(reveal), 0, 2)).to.equal(true)
+        expect(await deployedContract.validTransitionTestable(encode(guess), encode(reveal), 1, 2)).to.equal(true)
+      }
+    })
+
+    it("Should recognise bamboozles", async () => {
+      for (let i = 0; i < pairingOptions.length; i++) {
+        const g = pairingOptions[i];
+        for (let j = 0; j < pairingOptions.length; j++) {
+          const s = pairingOptions[j];
+          // if the guesser only got one pairing right
+          if ((g[0] != s[0] && g[1] == s[1]) || (g[0] == s[0] && g[1] != s[1])) {
+            guess.guess = g
+            guess.selectionCommitment = commit(s)
+            reveal.selection = s
+
+            // test in both turn types (with A as selector, and A as guesser)
+            reveal.treasury = {a: 5, b: 4, pot: 3}
+            expect(await deployedContract.validTransitionTestable(encode(guess), encode(reveal), 0, 2)).to.equal(true)
+            reveal.treasury = {a: 3, b: 6, pot: 3}
+            expect(await deployedContract.validTransitionTestable(encode(guess), encode(reveal), 1, 2)).to.equal(true)
+          }
+        }
+      }
+    })
+
+    it("Should recognise bungles", async () => {
+      for (let i = 0; i < pairingOptions.length; i++) {
+        const g = pairingOptions[i];
+        for (let j = 0; j < pairingOptions.length; j++) {
+          const s = pairingOptions[j];
+          // if the guesser gets nothing right
+          if (g[0] != s[0] && g[1] != s[1]) {
+            guess.guess = g
+            guess.selectionCommitment = commit(s)
+            reveal.selection = s
+
+            reveal.treasury = {a: 3, b: 4, pot: 3}
+            expect(await deployedContract.validTransitionTestable(encode(guess), encode(reveal), 0, 2)).to.equal(true)
+            expect(await deployedContract.validTransitionTestable(encode(guess), encode(reveal), 1, 2)).to.equal(true)
+          }
+        }
+      }
+    })
+
 
   })
-});
+})
