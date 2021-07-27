@@ -80,7 +80,18 @@ contract MyWord is IForceMoveApp, Util {
         require(keccak256(abi.encodePacked(pair.nounDraw, pair.adjectiveDraw, pair.salt)) == shuffle.drawCommitment, "Draw reveal invalid");
     }
 
-    function requireValidPairToGuess(Pair memory pair, Guess memory guess) internal view {}
+    function requireValidPairToGuess(Pair memory pair, Guess memory guess) internal view {
+        requireEqualTreasuries(pair.treasury, guess.treasury);
+        require(pair.selectionCommitment == guess.selectionCommitment, "Selection commitment tampered with");
+        uint8 i;
+        for (i = 0; i < 2; i++) {
+            require(pair.nouns[1] == guess.nouns[1], "Drawn nouns altered");
+        }
+        for (i = 0; i < 3; i++) {
+            require(pair.adjectives[i] == guess.adjectives[i], "Drawn adjectives altered");
+        }
+        require(guess.guess[0] < 3 && guess.guess[1] < 3, "Guess out of range [0, 2]");
+    }
 
     function requireValidGuessToReveal(Guess memory guess, Reveal memory reveal) internal view {}
 
@@ -103,7 +114,11 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Draw {
         string kind;
+
+        // newly made
         bytes32 drawCommitment;
+
+        // passed through
         Treasury treasury;
     }
 
@@ -114,8 +129,12 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Shuffle {
         string kind;
+
+        // newly made
         uint32[2] nounShuffles;
         uint32[3] adjectiveShuffles;
+
+        // passed through
         bytes32 drawCommitment;
         Treasury treasury;
     }
@@ -128,12 +147,20 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Pair {
         string kind;
+
+        // newly generated
         bytes32 selectionCommitment;
+
+        // calculated
+        uint32[2] nouns;
+        uint32[3] adjectives;
+
+        // revealed
         uint32[2] nounDraw;
         uint32[3] adjectiveDraw;
         uint256 salt;
-        uint32[2] nouns;
-        uint32[3] adjectives;
+
+        // passed through
         Treasury treasury;
     }
 
@@ -144,9 +171,14 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Guess {
         string kind;
+
+        // newly generated
         uint8[2] guess;
+
+        // passed through
         bytes32 selectionCommitment;
-        uint32[5] cards;
+        uint32[2] nouns;
+        uint32[3] adjectives;
         Treasury treasury;
     }
 
@@ -155,9 +187,13 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Reveal {
         string kind;
-        uint256 salt;
+
+        // calculated
         uint8[2] selection;
         Treasury treasury;
+
+        // revealed
+        uint256 salt;
     }
 
     /**
