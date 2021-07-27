@@ -13,7 +13,7 @@ import { Util } from "./Util.sol";
 contract MyWord is IForceMoveApp, Util {
     uint32 nounListLength;
     uint32 adjectiveListLength;
-    constructor() public {
+    constructor() {
         nounListLength = 1000;
         adjectiveListLength = 2000;
     }
@@ -42,36 +42,49 @@ contract MyWord is IForceMoveApp, Util {
         string memory toKind = kind(to.appData);
 
         if (strEq(fromKind, "Draw") && strEq(toKind, "Shuffle")) {
-            Draw memory draw = decodeDraw(from.appData);
-            Shuffle memory shuffle = decodeShuffle(to.appData);
-
-            requireEqualTreasuries(draw.treasury, shuffle.treasury);
-            require(draw.drawCommitment == shuffle.drawCommitment, "Draw commitment tampered with");
+            requireValidDrawToShuffle(abi.decode(from.appData, (Draw)), abi.decode(to.appData, (Shuffle)));
         } else if (strEq(fromKind, "Shuffle") && strEq(toKind, "Pair")) {
-            Shuffle memory shuffle = decodeShuffle(from.appData);
-            Pair memory pair = decodePair(to.appData);
-
-            requireEqualTreasuries(shuffle.treasury, pair.treasury);
-            uint8 i;
-            for (i = 0; i < 2; i++) {
-                require(shuffle.nounShuffles[i] < nounListLength, "Noun shuffle must be an integer less than the noun list length");
-                require(pair.nounDraw[i] < nounListLength, "Noun draw must be an integer less than the noun list length");
-                require((shuffle.nounShuffles[i] + pair.nounDraw[i]) % nounListLength == pair.nouns[i], "Selected card must be draw plus shuffle mod list length");
-            }
-            for (i = 0; i < 3; i++) {
-                require(shuffle.adjectiveShuffles[i] < adjectiveListLength, "Adjective shuffle must be an integer less than the adjective list length");
-                require(pair.adjectiveDraw[i] < adjectiveListLength, "Adjective draw must be an integer less than the adjective list length");
-                require((shuffle.adjectiveShuffles[i] + pair.adjectiveDraw[i]) % adjectiveListLength == pair.adjectives[i], "Selected card must be draw plus shuffle mod list length");
-            }
-            require(keccak256(abi.encodePacked(pair.nounDraw, pair.adjectiveDraw, pair.salt)) == shuffle.drawCommitment, "Draw reveal invalid");
+            requireValidShuffleToPair(abi.decode(from.appData, (Shuffle)), abi.decode(to.appData, (Pair)));
         } else if (strEq(fromKind, "Pair") && strEq(toKind, "Guess")) {
+            requireValidPairToGuess(abi.decode(from.appData, (Pair)), abi.decode(to.appData, (Guess)));
         } else if (strEq(fromKind, "Guess") && strEq(toKind, "Reveal")) {
+            requireValidGuessToReveal(abi.decode(from.appData, (Guess)), abi.decode(to.appData, (Reveal)));
         } else if (strEq(fromKind, "Reveal") && strEq(toKind, "Draw")) {
+            requireValidRevealToDraw(abi.decode(from.appData, (Reveal)), abi.decode(to.appData, (Draw)));
         } else {
             revert("Invalid state kinds");
         }
         return true;
     }
+    
+    // ------------------------------------------------- Transitions -------------------------------------------------
+
+    function requireValidDrawToShuffle(Draw memory draw, Shuffle memory shuffle) internal view {
+        requireEqualTreasuries(draw.treasury, shuffle.treasury);
+        require(draw.drawCommitment == shuffle.drawCommitment, "Draw commitment tampered with");
+    }
+
+    function requireValidShuffleToPair(Shuffle memory shuffle, Pair memory pair) internal view {
+        requireEqualTreasuries(shuffle.treasury, pair.treasury);
+        uint8 i;
+        for (i = 0; i < 2; i++) {
+            require(shuffle.nounShuffles[i] < nounListLength, "Noun shuffle must be an integer less than the noun list length");
+            require(pair.nounDraw[i] < nounListLength, "Noun draw must be an integer less than the noun list length");
+            require((shuffle.nounShuffles[i] + pair.nounDraw[i]) % nounListLength == pair.nouns[i], "Selected card must be draw plus shuffle mod list length");
+        }
+        for (i = 0; i < 3; i++) {
+            require(shuffle.adjectiveShuffles[i] < adjectiveListLength, "Adjective shuffle must be an integer less than the adjective list length");
+            require(pair.adjectiveDraw[i] < adjectiveListLength, "Adjective draw must be an integer less than the adjective list length");
+            require((shuffle.adjectiveShuffles[i] + pair.adjectiveDraw[i]) % adjectiveListLength == pair.adjectives[i], "Selected card must be draw plus shuffle mod list length");
+        }
+        require(keccak256(abi.encodePacked(pair.nounDraw, pair.adjectiveDraw, pair.salt)) == shuffle.drawCommitment, "Draw reveal invalid");
+    }
+
+    function requireValidPairToGuess(Pair memory pair, Guess memory guess) internal view {}
+
+    function requireValidGuessToReveal(Guess memory guess, Reveal memory reveal) internal view {}
+
+    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw) internal view {}
 
     // ------------------------------------------------- Game States -------------------------------------------------
     //
@@ -189,24 +202,13 @@ contract MyWord is IForceMoveApp, Util {
 
 
      /**
-     * The DecodeX functions decode structs on chain
      * The XStruct functions expose structs in the ABI
-     * TODO: generate precompile
-     * TODO: move to another file
+     * TODO: use the requireValidXtoY functions instead
      */
-    function decodeDraw(bytes memory appDataBytes) internal pure returns (Draw memory) {return abi.decode(appDataBytes, (Draw));}
     function DrawStruct(Draw memory) public pure {}
-    
-    function decodeShuffle(bytes memory appDataBytes) internal pure returns (Shuffle memory) { return abi.decode(appDataBytes, (Shuffle));}
     function ShuffleStruct(Shuffle memory) public pure {}
-
-    function decodePair(bytes memory appDataBytes) internal pure returns (Pair memory) { return abi.decode(appDataBytes, (Pair));}
     function PairStruct(Pair memory) public pure {}
-
-    function decodeGuess(bytes memory appDataBytes) internal pure returns (Guess memory) { return abi.decode(appDataBytes, (Guess));}
     function GuessStruct(Guess memory) public pure {}
-
-    function decodeReveal(bytes memory appDataBytes) internal pure returns (Reveal memory) { return abi.decode(appDataBytes, (Reveal));}
     function RevealStruct(Reveal memory) public pure {}
 
 }
