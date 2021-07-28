@@ -233,4 +233,31 @@ describe("MyWord", function () {
 
 
   })
+
+  describe("Reveal -> Draw", () => {
+    let reveal: Reveal
+    let draw: Draw
+
+    beforeEach(() => {
+      reveal = new Reveal([0,1], { a: 4, b: 5, pot: 3 }, 123456789)
+      draw = new Draw(ethers.constants.HashZero, { a: 4, b: 5, pot: 3 })
+    })
+
+    it("Should allow transitions valid transitions", async () => {
+      expect(await deployedContract.validTransitionTestable(encode(reveal), encode(draw), 0, 2)).to.equal(true)
+    })
+
+    it("Should not allow the treasury to change", async () => {
+      draw.treasury = { a: 6, b: 5, pot: 3 }
+      await expect(deployedContract.validTransitionTestable(encode(reveal), encode(draw), 0, 2)).to.be.revertedWith("Treasuries not equal")
+    })
+
+    it("Should require 2 or more coins in the pot", async () => {
+       let treasury = { a: 4, b: 5, pot: 0 }
+       draw.treasury = treasury
+       reveal.treasury = treasury
+      await expect(deployedContract.validTransitionTestable(encode(reveal), encode(draw), 0, 2)).to.be.revertedWith("Can't start a new round with less than 2 coins in the pot")
+    })
+
+  })
 })

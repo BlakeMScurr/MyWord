@@ -120,7 +120,10 @@ contract MyWord is IForceMoveApp, Util {
         requireEqualTreasuries(guess.treasury, reveal.treasury);
     }
 
-    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw, uint48 turnNumB) internal view {}
+    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw, uint48 turnNumB) internal view {
+        requireEqualTreasuries(reveal.treasury, draw.treasury);
+        require(draw.treasury.pot >= 2, "Can't start a new round with less than 2 coins in the pot");
+    }
 
     // ------------------------------------------------- Game States -------------------------------------------------
     //
