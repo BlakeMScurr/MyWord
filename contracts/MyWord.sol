@@ -11,45 +11,27 @@ import { Util } from "./Util.sol";
  * data. Used for testing purposes.
  */
 contract MyWord is IForceMoveApp, Util {
-    uint32 nounListLength;
-    uint32 adjectiveListLength;
-    constructor() {
-        nounListLength = 1000;
-        adjectiveListLength = 2000;
-    }
-
-    /**
-     * @notice Encodes trivial rules.
-     * @dev Encodes trivial rules.
-     * @return true.
-     */
     function validTransition(
-        VariablePart memory,
-        VariablePart memory,
-        uint48, // turnNumB
-        uint256 // nParticipants
-    ) public override pure returns (bool) {
-        return true;
-    }
-
-    function validTransitionTestable(
         VariablePart memory from,
         VariablePart memory to,
         uint48 turnNumB,
         uint256 // nParticipants
-    ) public view returns (bool) {
-        string memory fromKind = kind(from.appData);
-        string memory toKind = kind(to.appData);
+    ) public override pure returns (bool) {
+        GenericState memory fromState = asGenericState(from.appData);
+        GenericState memory toState = asGenericState(to.appData);
 
-        if (strEq(fromKind, "Draw") && strEq(toKind, "Shuffle")) {
+        require(fromState.nounListLength == toState.nounListLength, "Noun list altered");
+        require(fromState.adjectiveListLength == toState.adjectiveListLength, "Noun list altered");
+
+        if (strEq(fromState.kind, "Draw") && strEq(toState.kind, "Shuffle")) {
             requireValidDrawToShuffle(abi.decode(from.appData, (Draw)), abi.decode(to.appData, (Shuffle)), turnNumB);
-        } else if (strEq(fromKind, "Shuffle") && strEq(toKind, "Pair")) {
+        } else if (strEq(fromState.kind, "Shuffle") && strEq(toState.kind, "Pair")) {
             requireValidShuffleToPair(abi.decode(from.appData, (Shuffle)), abi.decode(to.appData, (Pair)), turnNumB);
-        } else if (strEq(fromKind, "Pair") && strEq(toKind, "Guess")) {
+        } else if (strEq(fromState.kind, "Pair") && strEq(toState.kind, "Guess")) {
             requireValidPairToGuess(abi.decode(from.appData, (Pair)), abi.decode(to.appData, (Guess)), turnNumB);
-        } else if (strEq(fromKind, "Guess") && strEq(toKind, "Reveal")) {
+        } else if (strEq(fromState.kind, "Guess") && strEq(toState.kind, "Reveal")) {
             requireValidGuessToReveal(abi.decode(from.appData, (Guess)), abi.decode(to.appData, (Reveal)), turnNumB);
-        } else if (strEq(fromKind, "Reveal") && strEq(toKind, "Draw")) {
+        } else if (strEq(fromState.kind, "Reveal") && strEq(toState.kind, "Draw")) {
             requireValidRevealToDraw(abi.decode(from.appData, (Reveal)), abi.decode(to.appData, (Draw)), turnNumB);
         } else {
             revert("Invalid state kinds");
@@ -59,28 +41,28 @@ contract MyWord is IForceMoveApp, Util {
     
     // ------------------------------------------------- Transitions -------------------------------------------------
 
-    function requireValidDrawToShuffle(Draw memory draw, Shuffle memory shuffle, uint48 turnNumB) internal view {
+    function requireValidDrawToShuffle(Draw memory draw, Shuffle memory shuffle, uint48 turnNumB) internal pure {
         requireEqualTreasuries(draw.treasury, shuffle.treasury);
         require(draw.drawCommitment == shuffle.drawCommitment, "Draw commitment tampered with");
     }
 
-    function requireValidShuffleToPair(Shuffle memory shuffle, Pair memory pair, uint48 turnNumB) internal view {
+    function requireValidShuffleToPair(Shuffle memory shuffle, Pair memory pair, uint48 turnNumB) internal pure {
         requireEqualTreasuries(shuffle.treasury, pair.treasury);
         uint8 i;
         for (i = 0; i < 2; i++) {
-            require(shuffle.nounShuffles[i] < nounListLength, "Noun shuffle must be an integer less than the noun list length");
-            require(pair.nounDraw[i] < nounListLength, "Noun draw must be an integer less than the noun list length");
-            require((shuffle.nounShuffles[i] + pair.nounDraw[i]) % nounListLength == pair.nouns[i], "Selected card must be draw plus shuffle mod list length");
+            require(shuffle.nounShuffles[i] < pair.nounListLength, "Noun shuffle must be an integer less than the noun list length");
+            require(pair.nounDraw[i] < pair.nounListLength, "Noun draw must be an integer less than the noun list length");
+            require((shuffle.nounShuffles[i] + pair.nounDraw[i]) % pair.nounListLength == pair.nouns[i], "Selected card must be draw plus shuffle mod list length");
         }
         for (i = 0; i < 3; i++) {
-            require(shuffle.adjectiveShuffles[i] < adjectiveListLength, "Adjective shuffle must be an integer less than the adjective list length");
-            require(pair.adjectiveDraw[i] < adjectiveListLength, "Adjective draw must be an integer less than the adjective list length");
-            require((shuffle.adjectiveShuffles[i] + pair.adjectiveDraw[i]) % adjectiveListLength == pair.adjectives[i], "Selected card must be draw plus shuffle mod list length");
+            require(shuffle.adjectiveShuffles[i] < pair.adjectiveListLength, "Adjective shuffle must be an integer less than the adjective list length");
+            require(pair.adjectiveDraw[i] < pair.adjectiveListLength, "Adjective draw must be an integer less than the adjective list length");
+            require((shuffle.adjectiveShuffles[i] + pair.adjectiveDraw[i]) % pair.adjectiveListLength == pair.adjectives[i], "Selected card must be draw plus shuffle mod list length");
         }
         require(keccak256(abi.encodePacked(pair.nounDraw, pair.adjectiveDraw, pair.salt)) == shuffle.drawCommitment, "Draw reveal invalid");
     }
 
-    function requireValidPairToGuess(Pair memory pair, Guess memory guess, uint48 turnNumB) internal view {
+    function requireValidPairToGuess(Pair memory pair, Guess memory guess, uint48 turnNumB) internal pure {
         requireEqualTreasuries(pair.treasury, guess.treasury);
         require(pair.selectionCommitment == guess.selectionCommitment, "Selection commitment tampered with");
         uint8 i;
@@ -93,7 +75,7 @@ contract MyWord is IForceMoveApp, Util {
         require(guess.guess[0] < 3 && guess.guess[1] < 3, "Guess out of range [0, 2]");
     }
 
-    function requireValidGuessToReveal(Guess memory guess, Reveal memory reveal, uint48 turnNumB) internal view {
+    function requireValidGuessToReveal(Guess memory guess, Reveal memory reveal, uint48 turnNumB) internal pure {
         require(keccak256(abi.encodePacked(reveal.selection, reveal.salt)) == guess.selectionCommitment, "Selection reveal invalid");
 
         uint8 guesserDelta;
@@ -120,7 +102,7 @@ contract MyWord is IForceMoveApp, Util {
         requireEqualTreasuries(guess.treasury, reveal.treasury);
     }
 
-    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw, uint48 turnNumB) internal view {
+    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw, uint48 turnNumB) internal pure {
         requireEqualTreasuries(reveal.treasury, draw.treasury);
         require(draw.treasury.pot >= 2, "Can't start a new round with less than 2 coins in the pot");
     }
@@ -142,12 +124,15 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Draw {
         string kind;
+        uint32 nounListLength;
+        uint32 adjectiveListLength;
 
         // newly made
         bytes32 drawCommitment;
 
         // passed through
         Treasury treasury;
+
     }
 
     /** 
@@ -157,6 +142,8 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Shuffle {
         string kind;
+        uint32 nounListLength;
+        uint32 adjectiveListLength;
 
         // newly made
         uint32[2] nounShuffles;
@@ -165,6 +152,7 @@ contract MyWord is IForceMoveApp, Util {
         // passed through
         bytes32 drawCommitment;
         Treasury treasury;
+
     }
 
     /** 
@@ -175,6 +163,8 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Pair {
         string kind;
+        uint32 nounListLength;
+        uint32 adjectiveListLength;
 
         // newly generated
         bytes32 selectionCommitment;
@@ -199,6 +189,8 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Guess {
         string kind;
+        uint32 nounListLength;
+        uint32 adjectiveListLength;
 
         // newly generated
         uint8[2] guess;
@@ -215,6 +207,8 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct Reveal {
         string kind;
+        uint32 nounListLength;
+        uint32 adjectiveListLength;
 
         // calculated
         uint8[2] selection;
@@ -255,10 +249,12 @@ contract MyWord is IForceMoveApp, Util {
      */
     struct GenericState {
         string kind;
+        uint32 nounListLength;
+        uint32 adjectiveListLength;
     }
 
-    function kind(bytes memory appDataBytes) internal pure returns (string memory) {
-        return abi.decode(appDataBytes, (GenericState)).kind;
+    function asGenericState(bytes memory appDataBytes) internal pure returns (GenericState memory) {
+        return abi.decode(appDataBytes, (GenericState));
     }
     function GenericStateInterface(GenericState memory) public pure {}
 
