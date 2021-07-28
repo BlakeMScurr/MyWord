@@ -23,14 +23,14 @@ describe("MyWord", function () {
   // no outcome encode
   let encode = (state):VariablePart => {
     return {
-      outcome: hEthers.constants.HashZero,
+      outcome: ethers.constants.HashZero,
       appData: abi.encodeStruct(state),
     }
   }
-  let encodeGenericStruct = (kind):VariablePart => {
+  let encodeGenericStruct = (kind, nll?, all?):VariablePart => {
     return {
-      outcome: hEthers.constants.HashZero,
-      appData: abi.encodeGenericStruct(kind, nounListLength, adjectiveListLength),
+      outcome: ethers.constants.HashZero,
+      appData: abi.encodeGenericStruct(kind, nll ? nll : nounListLength, all ? all : adjectiveListLength),
     }
   }
 
@@ -38,6 +38,11 @@ describe("MyWord", function () {
     await expect(deployedContract.validTransition(encodeGenericStruct("Draw"), encodeGenericStruct("Pair"), 0, 2)).to.be.revertedWith("Invalid state kinds") // jump
     await expect(deployedContract.validTransition(encodeGenericStruct("Shuffle"), encodeGenericStruct("Draw"), 0, 2)).to.be.revertedWith("Invalid state kinds") // reversed
     await expect(deployedContract.validTransition(encodeGenericStruct("Jazz"), encodeGenericStruct("AppleTrane"), 0, 2)).to.be.revertedWith("Invalid state kinds") // garbace
+  })
+
+  it("Should not let the noun or adjective list lengths change", async() => {
+    await expect(deployedContract.validTransition(encodeGenericStruct("Draw", 10, 10), encodeGenericStruct("Shuffle", 11, 10), 0, 2)).to.be.revertedWith("Noun list altered")
+    await expect(deployedContract.validTransition(encodeGenericStruct("Draw", 10, 10), encodeGenericStruct("Shuffle", 10, 11), 0, 2)).to.be.revertedWith("Adjective list altered")
   })
 
   describe("Draw -> Shuffle", () => {

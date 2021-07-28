@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 import "hardhat/console.sol";
 
 import '@statechannels/nitro-protocol/contracts/interfaces/IForceMoveApp.sol';
+import '@statechannels/nitro-protocol/contracts/Outcome.sol';
 import { Util } from "./Util.sol";
 
 /**
@@ -21,7 +22,7 @@ contract MyWord is IForceMoveApp, Util {
         GenericState memory toState = asGenericState(to.appData);
 
         require(fromState.nounListLength == toState.nounListLength, "Noun list altered");
-        require(fromState.adjectiveListLength == toState.adjectiveListLength, "Noun list altered");
+        require(fromState.adjectiveListLength == toState.adjectiveListLength, "Adjective list altered");
 
         if (strEq(fromState.kind, "Draw") && strEq(toState.kind, "Shuffle")) {
             requireValidDrawToShuffle(abi.decode(from.appData, (Draw)), abi.decode(to.appData, (Shuffle)), turnNumB);
@@ -243,6 +244,15 @@ contract MyWord is IForceMoveApp, Util {
 
     // --------------------------------------------------- Interface ---------------------------------------------------
 
+    function extractAllocation(VariablePart memory variablePart) private pure returns (Outcome.AllocationItem[] memory) {
+        Outcome.OutcomeItem[] memory outcome = abi.decode(variablePart.outcome, (Outcome.OutcomeItem[]));
+        require(outcome.length == 1, 'Only one asset allowed');
+        Outcome.AssetOutcome memory assetOutcome = abi.decode(outcome[0].assetOutcomeBytes, (Outcome.AssetOutcome));
+        require(assetOutcome.assetOutcomeType == uint8(Outcome.AssetOutcomeType.Allocation), 'AssetOutcomeType must be Allocation');
+        Outcome.AllocationItem[] memory allocation = abi.decode(assetOutcome.allocationOrGuaranteeBytes, (Outcome.AllocationItem[]));
+        require(allocation.length == 2, 'Allocation length must equal number of participants (i.e. 2)');
+        return allocation;
+    }
 
     /**
      * GenericState allows us distinguish between any state kind, so long as `kind` is the first parameter defined in any struct definition
@@ -270,5 +280,4 @@ contract MyWord is IForceMoveApp, Util {
     function PairStruct(Pair memory) public pure {}
     function GuessStruct(Guess memory) public pure {}
     function RevealStruct(Reveal memory) public pure {}
-
 }
