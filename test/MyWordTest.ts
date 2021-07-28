@@ -1,4 +1,4 @@
-import { VariablePart } from "@statechannels/nitro-protocol";
+import { AllocationAssetOutcome, encodeOutcome, Outcome, VariablePart } from "@statechannels/nitro-protocol";
 import { expect } from "chai";
 import { BigNumberish, ethers } from "ethers";
 import { ABI } from "../lib/abi"
@@ -7,29 +7,40 @@ import * as contract from "../artifacts/contracts/MyWord.sol/MyWord.json";
 import { MyWord__factory } from "../typechain"
 import type { MyWord } from "../typechain"
 import { Draw, Guess, Pair, Reveal, Shuffle } from "../generated/MyWord";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe("MyWord", function () {
+describe("MyWord", async function () {
   let deployedContract: MyWord
   let abi: ABI;
   const nounListLength = 1000;
   const adjectiveListLength = 2000;
+  let signers: SignerWithAddress[]
+  let defaultAllocation: AllocationAssetOutcome
   before(async () => {
     const contractFactory = new MyWord__factory((await hEthers.getSigners())[0]);
     deployedContract = await contractFactory.deploy();
     await deployedContract.deployed();
     abi = new ABI(new ethers.utils.Interface(contract.abi))
+    signers = await hEthers.getSigners()
+    defaultAllocation = {
+      assetHolderAddress: deployedContract.address, // TODO: make this the actual asset holder, rather than just the 
+      allocationItems: [
+        { destination: ethers.utils.hexZeroPad(signers[0].address, 32), amount: "0x01" },
+        { destination: ethers.utils.hexZeroPad(signers[1].address, 32), amount: "0x00" },
+      ],
+    }
   })
 
   // no outcome encode
   let encode = (state):VariablePart => {
     return {
-      outcome: ethers.constants.HashZero,
+      outcome: encodeOutcome([defaultAllocation]),
       appData: abi.encodeStruct(state),
     }
   }
   let encodeGenericStruct = (kind, nll?, all?, tres?):VariablePart => {
     return {
-      outcome: ethers.constants.HashZero,
+      outcome: encodeOutcome([defaultAllocation]),
       appData: abi.encodeGenericStruct(kind, nll ? nll : nounListLength, all ? all : adjectiveListLength, tres ? tres : {a: 1, b: 1, pot: 4}),
     }
   }

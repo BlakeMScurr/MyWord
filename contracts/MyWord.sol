@@ -18,11 +18,19 @@ contract MyWord is IForceMoveApp, Util {
         uint48 turnNumTo,
         uint256 // nParticipants
     ) public override pure returns (bool) {
-        GenericState memory fromState = asGenericState(from.appData);
-        GenericState memory toState = asGenericState(to.appData);
+        GenericState memory fromState = abi.decode(from.appData, (GenericState));
+        GenericState memory toState = abi.decode(to.appData, (GenericState));
+        Outcome.AllocationItem[] memory fromAllocation = extractAllocation(from);
+        Outcome.AllocationItem[] memory toAllocation = extractAllocation(to);
 
         require(fromState.nounListLength == toState.nounListLength, "Noun list altered");
         require(fromState.adjectiveListLength == toState.adjectiveListLength, "Adjective list altered");
+
+        if (toState.treasury.pot >= 2) {
+            // requireAllocationZeroedAndFlipped(fromAllocation, toAllocation, turnNumTo);
+        } else {
+
+        }
 
         if (strEq(fromState.kind, "Draw") && strEq(toState.kind, "Shuffle")) {
             requireValidDrawToShuffle(abi.decode(from.appData, (Draw)), abi.decode(to.appData, (Shuffle)), turnNumTo);
@@ -276,9 +284,6 @@ contract MyWord is IForceMoveApp, Util {
         Treasury treasury;
     }
 
-    function asGenericState(bytes memory appDataBytes) internal pure returns (GenericState memory) {
-        return abi.decode(appDataBytes, (GenericState));
-    }
     function GenericStateInterface(GenericState memory) public pure {}
 
     // --------------------------------------------------- Decoders ---------------------------------------------------
