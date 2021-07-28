@@ -15,7 +15,7 @@ contract MyWord is IForceMoveApp, Util {
     function validTransition(
         VariablePart memory from,
         VariablePart memory to,
-        uint48 turnNumB,
+        uint48 turnNumTo,
         uint256 // nParticipants
     ) public override pure returns (bool) {
         GenericState memory fromState = asGenericState(from.appData);
@@ -25,15 +25,15 @@ contract MyWord is IForceMoveApp, Util {
         require(fromState.adjectiveListLength == toState.adjectiveListLength, "Adjective list altered");
 
         if (strEq(fromState.kind, "Draw") && strEq(toState.kind, "Shuffle")) {
-            requireValidDrawToShuffle(abi.decode(from.appData, (Draw)), abi.decode(to.appData, (Shuffle)), turnNumB);
+            requireValidDrawToShuffle(abi.decode(from.appData, (Draw)), abi.decode(to.appData, (Shuffle)), turnNumTo);
         } else if (strEq(fromState.kind, "Shuffle") && strEq(toState.kind, "Pair")) {
-            requireValidShuffleToPair(abi.decode(from.appData, (Shuffle)), abi.decode(to.appData, (Pair)), turnNumB);
+            requireValidShuffleToPair(abi.decode(from.appData, (Shuffle)), abi.decode(to.appData, (Pair)), turnNumTo);
         } else if (strEq(fromState.kind, "Pair") && strEq(toState.kind, "Guess")) {
-            requireValidPairToGuess(abi.decode(from.appData, (Pair)), abi.decode(to.appData, (Guess)), turnNumB);
+            requireValidPairToGuess(abi.decode(from.appData, (Pair)), abi.decode(to.appData, (Guess)), turnNumTo);
         } else if (strEq(fromState.kind, "Guess") && strEq(toState.kind, "Reveal")) {
-            requireValidGuessToReveal(abi.decode(from.appData, (Guess)), abi.decode(to.appData, (Reveal)), turnNumB);
+            requireValidGuessToReveal(abi.decode(from.appData, (Guess)), abi.decode(to.appData, (Reveal)), turnNumTo);
         } else if (strEq(fromState.kind, "Reveal") && strEq(toState.kind, "Draw")) {
-            requireValidRevealToDraw(abi.decode(from.appData, (Reveal)), abi.decode(to.appData, (Draw)), turnNumB);
+            requireValidRevealToDraw(abi.decode(from.appData, (Reveal)), abi.decode(to.appData, (Draw)), turnNumTo);
         } else {
             revert("Invalid state kinds");
         }
@@ -42,12 +42,12 @@ contract MyWord is IForceMoveApp, Util {
     
     // ------------------------------------------------- Transitions -------------------------------------------------
 
-    function requireValidDrawToShuffle(Draw memory draw, Shuffle memory shuffle, uint48 turnNumB) internal pure {
+    function requireValidDrawToShuffle(Draw memory draw, Shuffle memory shuffle, uint48 turnNumTo) internal pure {
         requireEqualTreasuries(draw.treasury, shuffle.treasury);
         require(draw.drawCommitment == shuffle.drawCommitment, "Draw commitment tampered with");
     }
 
-    function requireValidShuffleToPair(Shuffle memory shuffle, Pair memory pair, uint48 turnNumB) internal pure {
+    function requireValidShuffleToPair(Shuffle memory shuffle, Pair memory pair, uint48 turnNumTo) internal pure {
         requireEqualTreasuries(shuffle.treasury, pair.treasury);
         uint8 i;
         for (i = 0; i < 2; i++) {
@@ -63,7 +63,7 @@ contract MyWord is IForceMoveApp, Util {
         require(keccak256(abi.encodePacked(pair.nounDraw, pair.adjectiveDraw, pair.salt)) == shuffle.drawCommitment, "Draw reveal invalid");
     }
 
-    function requireValidPairToGuess(Pair memory pair, Guess memory guess, uint48 turnNumB) internal pure {
+    function requireValidPairToGuess(Pair memory pair, Guess memory guess, uint48 turnNumTo) internal pure {
         requireEqualTreasuries(pair.treasury, guess.treasury);
         require(pair.selectionCommitment == guess.selectionCommitment, "Selection commitment tampered with");
         uint8 i;
@@ -76,7 +76,7 @@ contract MyWord is IForceMoveApp, Util {
         require(guess.guess[0] < 3 && guess.guess[1] < 3, "Guess out of range [0, 2]");
     }
 
-    function requireValidGuessToReveal(Guess memory guess, Reveal memory reveal, uint48 turnNumB) internal pure {
+    function requireValidGuessToReveal(Guess memory guess, Reveal memory reveal, uint48 turnNumTo) internal pure {
         require(keccak256(abi.encodePacked(reveal.selection, reveal.salt)) == guess.selectionCommitment, "Selection reveal invalid");
 
         uint8 guesserDelta;
@@ -92,8 +92,8 @@ contract MyWord is IForceMoveApp, Util {
         }
         guess.treasury.pot -= 2;
 
-        // If turn numb is even then the drawer/selector/revealer must be player A, otherwise it's player B
-        if (turnNumB % 2 == 0) {
+        // If A is the revealer then they're also the selector and should get the selector delta and vice versa
+        if (latestTurnIsPlayerA(turnNumTo)) {
             guess.treasury.a += selectorDelta;
             guess.treasury.b += guesserDelta;
         } else {
@@ -103,10 +103,38 @@ contract MyWord is IForceMoveApp, Util {
         requireEqualTreasuries(guess.treasury, reveal.treasury);
     }
 
-    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw, uint48 turnNumB) internal pure {
+    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw, uint48 turnNumTo) internal pure {
         requireEqualTreasuries(reveal.treasury, draw.treasury);
         require(draw.treasury.pot >= 2, "Can't start a new round with less than 2 coins in the pot");
     }
+
+    // ------------------------------------------------- Utilities -------------------------------------------------
+
+    function requireEqualTreasuries(Treasury memory t1, Treasury memory t2) internal pure {
+        require(
+            t1.a == t2.a &&
+            t1.b == t2.b &&
+            t1.pot == t2.pot,
+        'Treasuries not equal');
+    }
+
+    function requireAllocationZeroedAndFlipped(Outcome.AllocationItem[] memory from, Outcome.AllocationItem[] memory to, uint48 turnNumTo) internal pure {
+        require(from[0].destination == to[0].destination, "Destination for player A may not change");
+        require(from[1].destination == to[1].destination, "Destination for player B may not change");
+
+        require(from[0].amount == to[1].amount, "Allocation must flip each turn");
+        require(from[1].amount == to[0].amount, "Allocation must flip each turn");
+        if (latestTurnIsPlayerA(turnNumTo)) {
+            require(to[1].amount == 0, "Player B must have nothing in the allocation to incentivise them to play their next turn");
+        } else {
+            require(to[0].amount == 0, "Player A must have nothing in the allocation to incentivise them to play their next turn");
+        }
+    }
+
+    function latestTurnIsPlayerA(uint48 turnNumTo) internal pure returns(bool) {
+        return turnNumTo % 2 == 0;
+    }
+
 
     // ------------------------------------------------- Game States -------------------------------------------------
     //
@@ -127,13 +155,10 @@ contract MyWord is IForceMoveApp, Util {
         string kind;
         uint32 nounListLength;
         uint32 adjectiveListLength;
+        Treasury treasury;
 
         // newly made
         bytes32 drawCommitment;
-
-        // passed through
-        Treasury treasury;
-
     }
 
     /** 
@@ -145,6 +170,7 @@ contract MyWord is IForceMoveApp, Util {
         string kind;
         uint32 nounListLength;
         uint32 adjectiveListLength;
+        Treasury treasury;
 
         // newly made
         uint32[2] nounShuffles;
@@ -152,7 +178,6 @@ contract MyWord is IForceMoveApp, Util {
 
         // passed through
         bytes32 drawCommitment;
-        Treasury treasury;
 
     }
 
@@ -166,6 +191,7 @@ contract MyWord is IForceMoveApp, Util {
         string kind;
         uint32 nounListLength;
         uint32 adjectiveListLength;
+        Treasury treasury;
 
         // newly generated
         bytes32 selectionCommitment;
@@ -178,9 +204,6 @@ contract MyWord is IForceMoveApp, Util {
         uint32[2] nounDraw;
         uint32[3] adjectiveDraw;
         uint256 salt;
-
-        // passed through
-        Treasury treasury;
     }
 
     /** 
@@ -192,6 +215,7 @@ contract MyWord is IForceMoveApp, Util {
         string kind;
         uint32 nounListLength;
         uint32 adjectiveListLength;
+        Treasury treasury;
 
         // newly generated
         uint8[2] guess;
@@ -200,7 +224,6 @@ contract MyWord is IForceMoveApp, Util {
         bytes32 selectionCommitment;
         uint32[2] nouns;
         uint32[3] adjectives;
-        Treasury treasury;
     }
 
     /** 
@@ -210,10 +233,10 @@ contract MyWord is IForceMoveApp, Util {
         string kind;
         uint32 nounListLength;
         uint32 adjectiveListLength;
+        Treasury treasury;
 
         // calculated
         uint8[2] selection;
-        Treasury treasury;
 
         // revealed
         uint256 salt;
@@ -230,17 +253,6 @@ contract MyWord is IForceMoveApp, Util {
         uint8 b;
         uint8 pot;
     }
-
-    // ------------------------------------------------- Requirements -------------------------------------------------
-
-    function requireEqualTreasuries(Treasury memory t1, Treasury memory t2) internal pure {
-        require(
-            t1.a == t2.a &&
-            t1.b == t2.b &&
-            t1.pot == t2.pot,
-        'Treasuries not equal');
-    }
-
 
     // --------------------------------------------------- Interface ---------------------------------------------------
 
@@ -261,6 +273,7 @@ contract MyWord is IForceMoveApp, Util {
         string kind;
         uint32 nounListLength;
         uint32 adjectiveListLength;
+        Treasury treasury;
     }
 
     function asGenericState(bytes memory appDataBytes) internal pure returns (GenericState memory) {

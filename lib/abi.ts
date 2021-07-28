@@ -17,7 +17,7 @@ export class ABI {
         return this.abiInterface._encodeParams(this.abiInterface.getFunction(struct.kind + "Struct").inputs, [struct])
     }
 
-    encodeGenericStruct(kind: string, nounListLength: number, adjectiveListLength: number) {
-        return this.abiInterface._encodeParams(this.abiInterface.getFunction("GenericStateInterface").inputs, [{kind: kind, nounListLength: nounListLength, adjectiveListLength: adjectiveListLength}])
+    encodeGenericStruct(kind: string, nounListLength: number, adjectiveListLength: number, treasury) {
+        return this.abiInterface._encodeParams(this.abiInterface.getFunction("GenericStateInterface").inputs, [{kind: kind, nounListLength: nounListLength, adjectiveListLength: adjectiveListLength, treasury: treasury}])
     }
 }

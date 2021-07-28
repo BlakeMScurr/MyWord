@@ -27,10 +27,10 @@ describe("MyWord", function () {
       appData: abi.encodeStruct(state),
     }
   }
-  let encodeGenericStruct = (kind, nll?, all?):VariablePart => {
+  let encodeGenericStruct = (kind, nll?, all?, tres?):VariablePart => {
     return {
       outcome: ethers.constants.HashZero,
-      appData: abi.encodeGenericStruct(kind, nll ? nll : nounListLength, all ? all : adjectiveListLength),
+      appData: abi.encodeGenericStruct(kind, nll ? nll : nounListLength, all ? all : adjectiveListLength, tres ? tres : {a: 1, b: 1, pot: 4}),
     }
   }
 
@@ -47,21 +47,21 @@ describe("MyWord", function () {
 
   describe("Draw -> Shuffle", () => {
     let commitment = ethers.utils.keccak256(ethers.utils.formatBytes32String("test"))
-    let draw = new Draw(nounListLength, adjectiveListLength, commitment, {a: 3, b: 4, pot: 5})
+    let draw = new Draw(nounListLength, adjectiveListLength, {a: 3, b: 4, pot: 5}, commitment)
 
     it("Should allow valid transitions", async () => {
-      let shuffle = new Shuffle(nounListLength, adjectiveListLength, [1,2], [3,4,5], commitment, {a: 3, b: 4, pot: 5})
+      let shuffle = new Shuffle(nounListLength, adjectiveListLength, {a: 3, b: 4, pot: 5}, [1,2], [3,4,5], commitment)
       expect(await deployedContract.validTransition(encode(draw), encode(shuffle), 0, 2)).to.equal(true)
     })
 
     it("Should not allow the treasury to change", async () => {
-      let shuffle = new Shuffle(nounListLength, adjectiveListLength, [1,2], [3,4,5], commitment, {a: 0, b: 7, pot: 5})
+      let shuffle = new Shuffle(nounListLength, adjectiveListLength, {a: 0, b: 7, pot: 5}, [1,2], [3,4,5], commitment)
       await expect(deployedContract.validTransition(encode(draw), encode(shuffle), 0, 2)).to.be.revertedWith("Treasuries not equal")
     })
 
     it("Should not allow the draw commitment to be tampered with", async () => {
       let tamperedHash = ethers.utils.keccak256(ethers.utils.formatBytes32String("sneakily choosen numbers"))
-      let shuffle = new Shuffle(nounListLength, adjectiveListLength, [1,2], [3,4,5], tamperedHash, {a: 3, b: 4, pot: 5})
+      let shuffle = new Shuffle(nounListLength, adjectiveListLength, {a: 3, b: 4, pot: 5}, [1,2], [3,4,5], tamperedHash)
       await expect(deployedContract.validTransition(encode(draw), encode(shuffle), 0, 2)).to.be.revertedWith("Draw commitment tampered with")
     });
   })
@@ -76,8 +76,8 @@ describe("MyWord", function () {
       let adjectiveDraw: [BigNumberish, BigNumberish, BigNumberish] = [0, 64, 1999]
   
       let drawCommitment = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "tuple(uint32, uint32)", "tuple(uint32, uint32, uint32)", "uint256" ], [nounDraw, adjectiveDraw, salt]))
-      shuffle = new Shuffle(nounListLength, adjectiveListLength, [69,420], [19, 84, 911], drawCommitment, {a: 3, b: 4, pot: 5})
-      pair = new Pair(nounListLength, adjectiveListLength, ethers.constants.HashZero, [119, 419], [19, 148, 910], nounDraw, adjectiveDraw, salt, {a: 3, b: 4, pot: 5})
+      shuffle = new Shuffle(nounListLength, adjectiveListLength, {a: 3, b: 4, pot: 5}, [69,420], [19, 84, 911], drawCommitment)
+      pair = new Pair(nounListLength, adjectiveListLength, {a: 3, b: 4, pot: 5}, ethers.constants.HashZero, [119, 419], [19, 148, 910], nounDraw, adjectiveDraw, salt)
     })
 
 
@@ -113,8 +113,8 @@ describe("MyWord", function () {
 
     beforeEach(() => {
       let selectionCommitment = ethers.constants.HashZero
-      pair = new Pair(nounListLength, adjectiveListLength, selectionCommitment, [0, 1], [0, 1, 2], [0, 0], [0, 0, 0], ethers.constants.HashZero, {a: 3, b: 4, pot: 5})
-      guess = new Guess(nounListLength, adjectiveListLength, [0,1], selectionCommitment, [0, 1], [0, 1, 2], {a: 3, b: 4, pot: 5})
+      pair = new Pair(nounListLength, adjectiveListLength, {a: 3, b: 4, pot: 5}, selectionCommitment, [0, 1], [0, 1, 2], [0, 0], [0, 0, 0], ethers.constants.HashZero)
+      guess = new Guess(nounListLength, adjectiveListLength, {a: 3, b: 4, pot: 5}, [0,1], selectionCommitment, [0, 1], [0, 1, 2])
     })
 
 
@@ -165,8 +165,8 @@ describe("MyWord", function () {
     beforeEach(() => {
       let nouns: [number, number] = [0,1]
       let adjectives: [number, number, number] = [0,1, 2]
-      guess = new Guess(nounListLength, adjectiveListLength, [0,1], commit([0,1]), nouns, adjectives, {a: 3, b: 4, pot: 5})
-      reveal = new Reveal(nounListLength, adjectiveListLength, [0,1], { a: 4, b: 5, pot: 3 }, salt)
+      guess = new Guess(nounListLength, adjectiveListLength, {a: 3, b: 4, pot: 5}, [0,1], commit([0,1]), nouns, adjectives)
+      reveal = new Reveal(nounListLength, adjectiveListLength, { a: 4, b: 5, pot: 3 }, [0,1], salt)
     })
 
     it("Should not allow incorrect treasuries", async () => {
@@ -246,8 +246,8 @@ describe("MyWord", function () {
     let draw: Draw
 
     beforeEach(() => {
-      reveal = new Reveal(nounListLength, adjectiveListLength, [0,1], { a: 4, b: 5, pot: 3 }, 123456789)
-      draw = new Draw(nounListLength, adjectiveListLength, ethers.constants.HashZero, { a: 4, b: 5, pot: 3 })
+      reveal = new Reveal(nounListLength, adjectiveListLength, { a: 4, b: 5, pot: 3 }, [0,1], 123456789)
+      draw = new Draw(nounListLength, adjectiveListLength, { a: 4, b: 5, pot: 3 }, ethers.constants.HashZero)
     })
 
     it("Should allow transitions valid transitions", async () => {
