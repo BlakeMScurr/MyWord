@@ -27,7 +27,7 @@ contract MyWord is IForceMoveApp, Util {
         require(fromState.adjectiveListLength == toState.adjectiveListLength, "Adjective list altered");
 
         if (toState.treasury.pot >= 2) {
-            // requireAllocationZeroedAndFlipped(fromAllocation, toAllocation, turnNumTo);
+            requireAllocationZeroedAndFlipped(fromAllocation, toAllocation, turnNumTo);
         } else {
 
         }
