@@ -228,6 +228,9 @@ describe("MyWord", async function () {
         reveal.selection = option
         expect(await deployedContract.validTransitionX(encode(guess, true), encode(reveal, false, ["0x04", "0x05"]), 0, 2)).to.equal(true)
         expect(await deployedContract.validTransitionX(encode(guess), encode(reveal, true, ["0x04", "0x05"]), 1, 2)).to.equal(true)
+
+        // test allocation sum greater than 12 (24)
+        expect(await deployedContract.validTransitionX(encode(guess, true, ["0x00", "0x18"]), encode(reveal, false, ["0x08", "0x0a"]), 0, 2)).to.equal(true)
       }
     })
 
