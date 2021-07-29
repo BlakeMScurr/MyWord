@@ -69,6 +69,11 @@ describe("MyWord", async function () {
     await expect(deployedContract.validTransition(encodeGenericStruct("Draw", true, 10, 10), encodeGenericStruct("Shuffle", false, 10, 11), 0, 2)).to.be.revertedWith("Adjective list altered")
   })
 
+  it("Should require flipped allocations", async() => {
+    await expect(deployedContract.validTransition(encodeGenericStruct("Draw", 10, 10), encodeGenericStruct("Shuffle", 10, 10), 0, 2)).to.be.revertedWith("Allocations not flipped")
+    await expect(deployedContract.validTransition(encodeGenericStruct("Draw", true, 10, 10), encodeGenericStruct("Shuffle", true, 10, 10), 0, 2)).to.be.revertedWith("Allocations not flipped")
+  })
+
   describe("Draw -> Shuffle", () => {
     let commitment = ethers.utils.keccak256(ethers.utils.formatBytes32String("test"))
     let draw = new Draw(nounListLength, adjectiveListLength, {a: 3, b: 4, pot: 5}, commitment)

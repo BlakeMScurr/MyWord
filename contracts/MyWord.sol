@@ -29,7 +29,7 @@ contract MyWord is IForceMoveApp, Util {
         if (toState.treasury.pot >= 2) {
             requireAllocationZeroedAndFlipped(fromAllocation, toAllocation, turnNumTo);
         } else {
-
+            requireTreasuryAllocationConsistency(fromAllocation, toAllocation, toState.treasury);
         }
 
         if (strEq(fromState.kind, "Draw") && strEq(toState.kind, "Shuffle")) {
@@ -126,12 +126,18 @@ contract MyWord is IForceMoveApp, Util {
         'Treasuries not equal');
     }
 
+    function requireTreasuryAllocationConsistency(Outcome.AllocationItem[] memory fromAlloc, Outcome.AllocationItem[] memory toAlloc, Treasury memory treasury) internal pure {
+        uint256 sum = fromAlloc[0].amount + fromAlloc[1].amount;
+        require(treasury.a/12 * sum == toAlloc[0].amount, "Player A got the wrong allocation");
+        require(treasury.b/12 * sum == toAlloc[1].amount, "Player B got the wrong allocation");
+    }
+
     function requireAllocationZeroedAndFlipped(Outcome.AllocationItem[] memory from, Outcome.AllocationItem[] memory to, uint48 turnNumTo) internal pure {
         require(from[0].destination == to[0].destination, "Destination for player A may not change");
         require(from[1].destination == to[1].destination, "Destination for player B may not change");
 
-        require(from[0].amount == to[1].amount, "Allocation must flip each turn");
-        require(from[1].amount == to[0].amount, "Allocation must flip each turn");
+        require(from[0].amount == to[1].amount, "Allocations not flipped");
+        require(from[1].amount == to[0].amount, "Allocations not flipped");
         if (latestTurnIsPlayerA(turnNumTo)) {
             require(to[1].amount == 0, "Player B must have nothing in the allocation to incentivise them to play their next turn");
         } else {
