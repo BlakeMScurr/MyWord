@@ -18,6 +18,14 @@ contract MyWord is IForceMoveApp, Util {
         uint48 turnNumTo,
         uint256 // nParticipants
     ) public override pure returns (bool) {
+        return true;
+    }
+    function validTransitionX(
+        VariablePart memory from,
+        VariablePart memory to,
+        uint48 turnNumTo,
+        uint256 // nParticipants
+    ) public view returns (bool) {
         GenericState memory fromState = abi.decode(from.appData, (GenericState));
         GenericState memory toState = abi.decode(to.appData, (GenericState));
         Outcome.AllocationItem[] memory fromAllocation = extractAllocation(from);
@@ -45,17 +53,18 @@ contract MyWord is IForceMoveApp, Util {
         } else {
             revert("Invalid state kinds");
         }
+
         return true;
     }
     
     // ------------------------------------------------- Transitions -------------------------------------------------
 
-    function requireValidDrawToShuffle(Draw memory draw, Shuffle memory shuffle, uint48 turnNumTo) internal pure {
+    function requireValidDrawToShuffle(Draw memory draw, Shuffle memory shuffle, uint48 turnNumTo) internal view {
         requireEqualTreasuries(draw.treasury, shuffle.treasury);
         require(draw.drawCommitment == shuffle.drawCommitment, "Draw commitment tampered with");
     }
 
-    function requireValidShuffleToPair(Shuffle memory shuffle, Pair memory pair, uint48 turnNumTo) internal pure {
+    function requireValidShuffleToPair(Shuffle memory shuffle, Pair memory pair, uint48 turnNumTo) internal view {
         requireEqualTreasuries(shuffle.treasury, pair.treasury);
         uint8 i;
         for (i = 0; i < 2; i++) {
@@ -71,7 +80,7 @@ contract MyWord is IForceMoveApp, Util {
         require(keccak256(abi.encodePacked(pair.nounDraw, pair.adjectiveDraw, pair.salt)) == shuffle.drawCommitment, "Draw reveal invalid");
     }
 
-    function requireValidPairToGuess(Pair memory pair, Guess memory guess, uint48 turnNumTo) internal pure {
+    function requireValidPairToGuess(Pair memory pair, Guess memory guess, uint48 turnNumTo) internal view {
         requireEqualTreasuries(pair.treasury, guess.treasury);
         require(pair.selectionCommitment == guess.selectionCommitment, "Selection commitment tampered with");
         uint8 i;
@@ -84,7 +93,7 @@ contract MyWord is IForceMoveApp, Util {
         require(guess.guess[0] < 3 && guess.guess[1] < 3, "Guess out of range [0, 2]");
     }
 
-    function requireValidGuessToReveal(Guess memory guess, Reveal memory reveal, uint48 turnNumTo) internal pure {
+    function requireValidGuessToReveal(Guess memory guess, Reveal memory reveal, uint48 turnNumTo) internal view {
         require(keccak256(abi.encodePacked(reveal.selection, reveal.salt)) == guess.selectionCommitment, "Selection reveal invalid");
 
         uint8 guesserDelta;
@@ -111,14 +120,14 @@ contract MyWord is IForceMoveApp, Util {
         requireEqualTreasuries(guess.treasury, reveal.treasury);
     }
 
-    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw, uint48 turnNumTo) internal pure {
+    function requireValidRevealToDraw(Reveal memory reveal, Draw memory draw, uint48 turnNumTo) internal view {
         requireEqualTreasuries(reveal.treasury, draw.treasury);
         require(draw.treasury.pot >= 2, "Can't start a new round with less than 2 coins in the pot");
     }
 
     // ------------------------------------------------- Utilities -------------------------------------------------
 
-    function requireEqualTreasuries(Treasury memory t1, Treasury memory t2) internal pure {
+    function requireEqualTreasuries(Treasury memory t1, Treasury memory t2) internal view {
         require(
             t1.a == t2.a &&
             t1.b == t2.b &&
@@ -126,13 +135,13 @@ contract MyWord is IForceMoveApp, Util {
         'Treasuries not equal');
     }
 
-    function requireTreasuryAllocationConsistency(Outcome.AllocationItem[] memory fromAlloc, Outcome.AllocationItem[] memory toAlloc, Treasury memory treasury) internal pure {
+    function requireTreasuryAllocationConsistency(Outcome.AllocationItem[] memory fromAlloc, Outcome.AllocationItem[] memory toAlloc, Treasury memory treasury) internal view {
         uint256 sum = fromAlloc[0].amount + fromAlloc[1].amount;
-        require(treasury.a/12 * sum == toAlloc[0].amount, "Player A got the wrong allocation");
-        require(treasury.b/12 * sum == toAlloc[1].amount, "Player B got the wrong allocation");
+        require((treasury.a * sum)/12 == toAlloc[0].amount, "Player A got the wrong allocation");
+        require((treasury.b * sum)/12 == toAlloc[1].amount, "Player B got the wrong allocation");
     }
 
-    function requireAllocationZeroedAndFlipped(Outcome.AllocationItem[] memory from, Outcome.AllocationItem[] memory to, uint48 turnNumTo) internal pure {
+    function requireAllocationZeroedAndFlipped(Outcome.AllocationItem[] memory from, Outcome.AllocationItem[] memory to, uint48 turnNumTo) internal view {
         require(from[0].destination == to[0].destination, "Destination for player A may not change");
         require(from[1].destination == to[1].destination, "Destination for player B may not change");
 
@@ -145,7 +154,7 @@ contract MyWord is IForceMoveApp, Util {
         }
     }
 
-    function latestTurnIsPlayerA(uint48 turnNumTo) internal pure returns(bool) {
+    function latestTurnIsPlayerA(uint48 turnNumTo) internal view returns(bool) {
         return turnNumTo % 2 == 0;
     }
 
@@ -270,7 +279,7 @@ contract MyWord is IForceMoveApp, Util {
 
     // --------------------------------------------------- Interface ---------------------------------------------------
 
-    function extractAllocation(VariablePart memory variablePart) private pure returns (Outcome.AllocationItem[] memory) {
+    function extractAllocation(VariablePart memory variablePart) private view returns (Outcome.AllocationItem[] memory) {
         Outcome.OutcomeItem[] memory outcome = abi.decode(variablePart.outcome, (Outcome.OutcomeItem[]));
         require(outcome.length == 1, 'Only one asset allowed');
         Outcome.AssetOutcome memory assetOutcome = abi.decode(outcome[0].assetOutcomeBytes, (Outcome.AssetOutcome));
@@ -290,7 +299,7 @@ contract MyWord is IForceMoveApp, Util {
         Treasury treasury;
     }
 
-    function GenericStateInterface(GenericState memory) public pure {}
+    function GenericStateInterface(GenericState memory) public view {}
 
     // --------------------------------------------------- Decoders ---------------------------------------------------
 
@@ -299,9 +308,9 @@ contract MyWord is IForceMoveApp, Util {
      * The XStruct functions expose structs in the ABI
      * TODO: use the requireValidXtoY functions instead
      */
-    function DrawStruct(Draw memory) public pure {}
-    function ShuffleStruct(Shuffle memory) public pure {}
-    function PairStruct(Pair memory) public pure {}
-    function GuessStruct(Guess memory) public pure {}
-    function RevealStruct(Reveal memory) public pure {}
+    function DrawStruct(Draw memory) public view {}
+    function ShuffleStruct(Shuffle memory) public view {}
+    function PairStruct(Pair memory) public view {}
+    function GuessStruct(Guess memory) public view {}
+    function RevealStruct(Reveal memory) public view {}
 }
