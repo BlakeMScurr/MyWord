@@ -83,5 +83,14 @@ import { BytesLike } from "@ethersproject/bytes";`
 // Go to https://hardhat.org/config/ to learn more
 
 export default {
-  solidity: "0.7.4",
+  solidity: {
+    compilers: [
+        {
+          version: "0.8.0",
+        },
+        {
+          version: "0.7.4",
+        },
+      ],
+    },
 };

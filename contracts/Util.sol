@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.7.4;
+pragma solidity ^0.7.4;
 
 contract Util {
     // from https://ethereum.stackexchange.com/a/59335
