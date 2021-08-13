@@ -1,4 +1,4 @@
-import { AllocationAssetOutcome, encodeOutcome, Outcome, VariablePart } from "@statechannels/nitro-protocol";
+import { AllocationAssetOutcome, encodeOutcome, Outcome, VariablePart, ContractArtifacts } from "@statechannels/nitro-protocol";
 import { expect } from "chai";
 import { BigNumberish, ethers } from "ethers";
 import { ABI } from "../lib/abi"
@@ -9,7 +9,7 @@ import type { MyWord } from "../typechain"
 import { Draw, Guess, Pair, Reveal, Shuffle } from "../generated/MyWord";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe("MyWord", async function () {
+describe("Transition", async function () {
   let deployedContract: MyWord
   let abi: ABI;
   const nounListLength = 1000;
