@@ -17,6 +17,7 @@
         // We can avoid the immediate mounting by installing a sub module (channel-provider),
         // but the logger infests the whole package (it's required by channel-provider, and at least on of channel-provider's deps)
         // and it looks for window on install
+        // Attempt to either get it refactored, or disable svelte's SRR as per https://github.com/sveltejs/kit/tree/master/packages/adapter-static#spa-mode
         let providerModule = await import('@statechannels/iframe-channel-provider');
         await window.channelProvider.mountWalletComponent(
             'https://xstate-wallet-v-0-3-0.statechannels.org'
