@@ -25,5 +25,10 @@
     "tslib": "^2.0.0",
     "typescript": "^4.0.0"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@statechannels/channel-client": "^0.4.6",
+    "@statechannels/iframe-channel-provider": "^0.3.17",
+    "rxjs": "^7.3.0"
+  }
 }
