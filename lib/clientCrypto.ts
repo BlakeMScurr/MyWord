@@ -15,12 +15,10 @@ export async function getServerNonce() {
         })
     })
     let json = await response.json()
-    let serverRand = json.rand
+    let serverRand = ethers.BigNumber.from(json.rand)
 
     // make nonce
-    console.log("concatenation:")
-    console.log(`${serverRand}${secretUint}`)
-    let nonce = ethers.utils.keccak256(`${serverRand}${secretUint}`)
+    let nonce = ethers.utils.keccak256(ethers.BigNumber.from(secretUint).add(serverRand).toHexString())
 
     // inform server of nonce
     response = await fetch("/api/nonce", {
@@ -40,12 +38,11 @@ export function randomUint256():string {
     window.crypto.getRandomValues(rands);
 
     // convert to 256 bit hex string
-    let hexStr = "";
+    let hexStr = "0x";
     for (var i = 0; i < rands.length; i++) {
         let hex = rands[i].toString(16);
         hex = "0".repeat(8-hex.length) + hex;
-        hexStr += rands[i].toString(16);
+        hexStr += hex;
     }
-
     return hexStr
 }
