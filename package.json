@@ -22,6 +22,7 @@
     "@typechain/hardhat": "^2.2.0",
     "@typescript-eslint/types": "^4.28.4",
     "@typescript-eslint/typescript-estree": "^4.28.4",
+    "bn.js": "^5.2.0",
     "openzeppelin4": "npm:@openzeppelin/contracts@^4.0.0",
     "ts-generator": "^0.1.1",
     "typechain": "^5.1.2",

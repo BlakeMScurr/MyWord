@@ -2,6 +2,7 @@
     var exports = {}; // fixes a weird bug caused by the dynamic import as per https://stackoverflow.com/a/46887516
     import { onMount } from "svelte";
     import type { ChannelClient } from "@statechannels/channel-client";
+    import { getServerNonce, randomUint256 } from "../../../lib/clientCrypto"
     
     enum States {
         waiting = 1,
@@ -12,6 +13,7 @@
     let channelClient: ChannelClient | null = null;
 
     onMount(async () => {
+        getServerNonce();
         // TODO: remove dynamic import
         // SSR of the iframe-channel-provider isn't going to work without it being refactored as it uses window everywhere
         // We can avoid the immediate mounting by installing a sub module (channel-provider),
@@ -27,6 +29,9 @@
     
     async function connect() {
         await window.channelProvider.enable();
+
+        let serverNonce = getServerNonce();
+        
         state = States.connected
     }
 </script>
